@@ -1,0 +1,100 @@
+@VSC:
+@New file;Config1.json
+{
+    "device":{
+        "host":"192.168.108.5",
+        "username":"admin",
+        "password":"pass",
+        "device_type":"cisco_ios"
+    },
+    "interface_config":{
+        "interface":"Loopback1",
+        "new_ip":"1.1.1.1",
+        "subnet_mask":"255.255.255.255"
+    },
+    "new_hostname":"APP1py"
+}
+@Newfile;Config1a.json
+{
+    "device" : {
+        "host" : "192.168.108.5",
+        "username" : "admin",
+        "password" : "pass",
+        "device_type" : "cisco_ios"
+    }, 
+    "interface_config1" : {
+        "interface" : "loopback1",
+        "new_ip" : "1.1.1.1",
+        "subnet_mask" : "255.255.255.255"
+    },
+    "new_hostname" : "APP1py"
+}
+@Newfile; pynet1.py
+import netmiko
+from netmiko import ConnectHandler
+sshCli = ConnectHandler(
+    device_type = 'cisco_ios',
+    host ='192.168.108.5',
+    port = 22,
+    username = 'admin',
+    password = 'pass'  
+)
+output = sshCli.send_command("show ip int brief")
+print("{}\n".format(output))
+config_commands = [
+    'int loopback 1',
+    'ip add 10.1.1.1 255.255.255.0',
+    'desc PYTHONNETMIKO\'s loopback1',
+       'int loopback 2',
+    'ip add 10.2.2.2 255.255.255.0',
+    'desc PYTHONNETMIKO\'s loopback2',
+        'int loopback 3',
+    'ip add 10.3.3.3 255.255.255.0',
+    'desc PYTHONNETMIKO\'s loopback3'
+]
+sentConfig = sshCli.send_config_set(config_commands)
+print("{}\n".format(sentConfig))
+output = sshCli.send_command("show ip int brief")
+print("{}\n".format(output))
+
+@New file: pynet2.py
+import json
+import netmiko
+from netmiko import ConnectHandler
+
+#tell python to open the Json file:
+with open('config1.json') as config_file:
+    config = json.load(config_file)
+    
+    #Extract json config to python memory:
+    device_info = config['device']
+    interface_config1 = config['interface_config1']
+    interface_config2 = config['interface_config2']
+    new_hostname = config['new_hostname']
+    
+    #Talk using ssh to cisco:
+    net_connect = ConnectHandler(**device_info)
+    
+    #Start Configuring via enable
+    net_connect.enable
+    
+    #Build the Cisco configuration Via Json:
+    commands = [
+        f"interface {interface_config1['interface']}",
+        f"ip address {interface_config1['new_ip']} {interface_config1['subnet_mask']}",
+        "no shutdown",
+        "exit",
+        f"interface {interface_config2['interface']}",
+        f"ip address {interface_config2['new_ip']} {interface_config2['subnet_mask']}",
+        "no shutdown",
+        "exit",
+        f"hostname {new_hostname}"
+     ]
+        
+    #Send config to Cisco Device:
+    output = net_connect.send_config_set(commands)
+    print(output)
+    
+    #exit/logout from Cisco:
+    net_connect.disconnect        
+   
